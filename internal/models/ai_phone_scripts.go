@@ -31,6 +31,7 @@ const (
 	StepTypeCondition StepType = "condition" // 条件判断
 	StepTypeWait      StepType = "wait"      // 等待
 	StepTypeRecord    StepType = "record"    // 录音
+	StepTypeDTMF      StepType = "dtmf"      // DTMF按键检测
 )
 
 // StepData 步骤数据结构
@@ -67,6 +68,13 @@ type StepData struct {
 	// 录音相关
 	RecordTime   int    `json:"recordTime,omitempty"`   // 录音时长(ms)
 	RecordPrompt string `json:"recordPrompt,omitempty"` // 录音提示语
+
+	// DTMF按键相关
+	DTMFTimeout    int               `json:"dtmfTimeout,omitempty"`    // DTMF等待超时(ms)
+	DTMFMaxDigits  int               `json:"dtmfMaxDigits,omitempty"`  // 最大按键数量
+	DTMFTerminator string            `json:"dtmfTerminator,omitempty"` // 结束按键（如#）
+	DTMFOptions    map[string]string `json:"dtmfOptions,omitempty"`    // 按键选项映射 {"1": "next_step_id"}
+	DTMFPrompt     string            `json:"dtmfPrompt,omitempty"`     // DTMF提示语
 
 	// 通用
 	NextStep  string                 `json:"nextStep,omitempty"`  // 下一步骤ID

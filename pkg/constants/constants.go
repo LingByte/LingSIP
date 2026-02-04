@@ -3,6 +3,7 @@ package constants
 const (
 	TABLE_SIP_CALLS             = "sip_calls"
 	TABLE_SIP_USERS             = "sip_users"
+	TABLE_SIP_TRUNKS            = "sip_trunks"
 	TABLE_AI_PHONE_SCRIPTS      = "ai_phone_scripts"
 	TABLE_AI_PHONE_SCRIPT_STEPS = "ai_phone_script_steps"
 	TABLE_SCRIPT_PHONE_MAPPINGS = "script_phone_mappings"

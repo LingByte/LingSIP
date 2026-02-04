@@ -50,14 +50,43 @@ type DatabaseConfig struct {
 // ServicesConfig services configuration
 type ServicesConfig struct {
 	LLM  LLMConfig               `mapstructure:"llm"`
+	ASR  ASRConfig               `mapstructure:"asr"`
+	TTS  TTSConfig               `mapstructure:"tts"`
 	Mail notification.MailConfig `mapstructure:"mail"`
 }
 
 // LLMConfig LLM service configuration
 type LLMConfig struct {
-	APIKey  string `env:"LLM_API_KEY"`
-	BaseURL string `env:"LLM_BASE_URL"`
-	Model   string `env:"LLM_MODEL"`
+	Provider    string  `env:"LLM_PROVIDER"` // openai, qwen, etc.
+	APIKey      string  `env:"LLM_API_KEY"`
+	BaseURL     string  `env:"LLM_BASE_URL"`
+	Model       string  `env:"LLM_MODEL"`
+	Temperature float32 `env:"LLM_TEMPERATURE"`
+	MaxTokens   int     `env:"LLM_MAX_TOKENS"`
+}
+
+// ASRConfig ASR service configuration
+type ASRConfig struct {
+	Provider  string `env:"ASR_PROVIDER"` // qcloud, baidu, aws, etc.
+	AppID     string `env:"ASR_APP_ID"`
+	SecretID  string `env:"ASR_SECRET_ID"`
+	SecretKey string `env:"ASR_SECRET_KEY"`
+	Region    string `env:"ASR_REGION"`
+	ModelType string `env:"ASR_MODEL_TYPE"` // 8k_zh, 16k_zh, etc.
+	Language  string `env:"ASR_LANGUAGE"`   // zh-CN, en-US, etc.
+}
+
+// TTSConfig TTS service configuration
+type TTSConfig struct {
+	Provider   string `env:"TTS_PROVIDER"` // qcloud, baidu, aws, etc.
+	AppID      string `env:"TTS_APP_ID"`
+	SecretID   string `env:"TTS_SECRET_ID"`
+	SecretKey  string `env:"TTS_SECRET_KEY"`
+	Region     string `env:"TTS_REGION"`
+	VoiceType  string `env:"TTS_VOICE_TYPE"`  // 601002, etc.
+	SampleRate int    `env:"TTS_SAMPLE_RATE"` // 8000, 16000, etc.
+	Codec      string `env:"TTS_CODEC"`       // pcm, mp3, etc.
+	Language   string `env:"TTS_LANGUAGE"`    // zh-CN, en-US, etc.
 }
 
 // MiddlewareConfig middleware configuration
@@ -148,9 +177,32 @@ func Load() error {
 		},
 		Services: ServicesConfig{
 			LLM: LLMConfig{
-				APIKey:  getStringOrDefault("LLM_API_KEY", ""),
-				BaseURL: getStringOrDefault("LLM_BASE_URL", "https://api.openai.com/v1"),
-				Model:   getStringOrDefault("LLM_MODEL", "gpt-3.5-turbo"),
+				Provider:    getStringOrDefault("LLM_PROVIDER", "openai"),
+				APIKey:      getStringOrDefault("LLM_API_KEY", ""),
+				BaseURL:     getStringOrDefault("LLM_BASE_URL", "https://api.openai.com/v1"),
+				Model:       getStringOrDefault("LLM_MODEL", "gpt-3.5-turbo"),
+				Temperature: float32(getFloatOrDefault("LLM_TEMPERATURE", 0.7)),
+				MaxTokens:   getIntOrDefault("LLM_MAX_TOKENS", 2000),
+			},
+			ASR: ASRConfig{
+				Provider:  getStringOrDefault("ASR_PROVIDER", "qcloud"),
+				AppID:     getStringOrDefault("ASR_APP_ID", ""),
+				SecretID:  getStringOrDefault("ASR_SECRET_ID", ""),
+				SecretKey: getStringOrDefault("ASR_SECRET_KEY", ""),
+				Region:    getStringOrDefault("ASR_REGION", "ap-beijing"),
+				ModelType: getStringOrDefault("ASR_MODEL_TYPE", "8k_zh"),
+				Language:  getStringOrDefault("ASR_LANGUAGE", "zh-CN"),
+			},
+			TTS: TTSConfig{
+				Provider:   getStringOrDefault("TTS_PROVIDER", "qcloud"),
+				AppID:      getStringOrDefault("TTS_APP_ID", ""),
+				SecretID:   getStringOrDefault("TTS_SECRET_ID", ""),
+				SecretKey:  getStringOrDefault("TTS_SECRET_KEY", ""),
+				Region:     getStringOrDefault("TTS_REGION", "ap-beijing"),
+				VoiceType:  getStringOrDefault("TTS_VOICE_TYPE", "601002"),
+				SampleRate: getIntOrDefault("TTS_SAMPLE_RATE", 8000),
+				Codec:      getStringOrDefault("TTS_CODEC", "pcm"),
+				Language:   getStringOrDefault("TTS_LANGUAGE", "zh-CN"),
 			},
 			Mail: notification.MailConfig{
 				Host:     getStringOrDefault("MAIL_HOST", ""),

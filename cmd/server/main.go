@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"os"
@@ -9,10 +10,12 @@ import (
 	"github.com/LingByte/LingSIP/cmd/bootstrap"
 	"github.com/LingByte/LingSIP/internal/models"
 	"github.com/LingByte/LingSIP/pkg/config"
+	"github.com/LingByte/LingSIP/pkg/llm"
 	"github.com/LingByte/LingSIP/pkg/logger"
 	sip1 "github.com/LingByte/LingSIP/pkg/sip"
 	"github.com/LingByte/LingSIP/pkg/sip/ua"
 	"github.com/LingByte/LingSIP/pkg/utils"
+	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 )
 
@@ -80,11 +83,49 @@ func main() {
 	// 9. Initialize Global Cache
 	utils.InitGlobalCache(1024, 5*time.Minute)
 
+	// 10. Initialize LLM Service
+	llmConfig := llm.DefaultConfig()
+	// 创建一个简单的logrus logger用于LLM服务
+	llmLogger := &logrus.Logger{
+		Out:       os.Stdout,
+		Formatter: &logrus.TextFormatter{},
+		Level:     logrus.InfoLevel,
+	}
+	llmService := llm.NewService(llmConfig, llmLogger)
+
+	// Initialize LLM with system prompt
+	systemPrompt := `你是成都市金牛区就业局的工作人员，负责通过电话了解市民的就业需求。
+
+你的任务：
+1. 礼貌地询问对方是否有就业相关需求
+2. 如果用户只是问候或确认能听到，要继续询问具体的就业需求
+3. 如果有需求，了解具体需要什么帮助（找工作、就业培训、创业服务等）
+4. 如果明确表示没有需求，礼貌地告知可以前往就近的街道或社区便民服务中心
+5. 保持专业、友好的语调
+
+对话策略：
+- 如果用户说"你好"、"喂"、"能听到"等问候语，回复后要主动询问就业需求
+- 如果用户回答模糊，要进一步澄清
+- 每次回复不要超过50个字
+- 语言要自然流畅，适合电话对话
+
+注意事项：
+- 不要过早结束对话
+- 确保了解用户的真实需求后再结束
+- 如果用户表示要结束通话，请礼貌地道别`
+
+	ctx := context.Background()
+	if err := llmService.Initialize(ctx, systemPrompt); err != nil {
+		logger.Warn("LLM service initialization failed, will use mock responses", zap.Error(err))
+	} else {
+		logger.Info("LLM service initialized successfully")
+	}
+
 	server, err := sip1.NewSipServer(10000, 5060, &ua.UAConfig{
 		Host:                  "0.0.0.0",
 		Port:                  5060,
 		UserAgentName:         ua.DEFAULT_USER_AGENT,
-		LocalRTPPort:          10000, // Default RPT Port
+		LocalRTPPort:          10000, // 修改为12000避免端口冲突
 		RegisterTimeout:       30 * time.Second,
 		TransactionTimeout:    30 * time.Second,
 		KeepAliveInterval:     60 * time.Second,
@@ -112,5 +153,14 @@ func main() {
 		panic(err)
 	}
 	defer server.Close()
+
+	// 11. Set LLM Service to AI Phone Engine
+	if server.GetAIPhoneEngine() != nil {
+		server.GetAIPhoneEngine().SetLLMService(llmService)
+		logger.Info("LLM service attached to AI Phone Engine")
+	}
+	logger.Info("SIP Server Started AT 5060")
 	server.Start()
+
+	select {}
 }

@@ -23,6 +23,9 @@ type SipServer struct {
 
 	// AI电话引擎
 	aiEngine *AIPhoneEngine
+
+	// SIP中继管理器
+	trunkManager *TrunkManager
 }
 
 func NewSipServer(rptPort, sipPort int, uaConfig *ua.UAConfig) (*SipServer, error) {
@@ -76,9 +79,29 @@ func NewSipServer(rptPort, sipPort int, uaConfig *ua.UAConfig) (*SipServer, erro
 	if uaConfig.Db != nil {
 		sipServer.aiEngine = NewAIPhoneEngine(sipServer, uaConfig.Db)
 		logger.Info("AI phone engine initialized")
+
+		// 初始化SIP中继管理器
+		sipServer.trunkManager = NewTrunkManager(uaConfig.Db, userAgent)
+		if sipServer.trunkManager != nil {
+			if err := sipServer.trunkManager.LoadTrunks(); err != nil {
+				logger.Error("Failed to load SIP trunks", zap.Error(err))
+			} else {
+				logger.Info("SIP trunk manager initialized")
+			}
+		}
 	}
 
 	return sipServer, nil
+}
+
+// GetAIPhoneEngine 获取AI电话引擎
+func (as *SipServer) GetAIPhoneEngine() *AIPhoneEngine {
+	return as.aiEngine
+}
+
+// GetTrunkManager 获取SIP中继管理器
+func (as *SipServer) GetTrunkManager() *TrunkManager {
+	return as.trunkManager
 }
 
 func (as *SipServer) Close() {
@@ -86,6 +109,12 @@ func (as *SipServer) Close() {
 	as.rtpConn.Close()
 	as.client.Close()
 	as.ua.Close()
+
+	// 关闭中继管理器
+	if as.trunkManager != nil {
+		as.trunkManager.Close()
+	}
+
 	as.running = false
 	logger.Info("SIP Server Closed")
 }

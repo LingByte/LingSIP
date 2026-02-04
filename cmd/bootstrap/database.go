@@ -138,6 +138,7 @@ func RunMigrations(db *gorm.DB) error {
 		&models.SipCall{},
 		&models.SipSession{},
 		&models.SipUser{},
+		&models.SIPTrunk{},
 		&models.AIPhoneScript{},
 		&models.AIPhoneScriptStep{},
 		&models.ScriptPhoneMapping{},

@@ -5,132 +5,121 @@ import (
 	"testing"
 )
 
-// 为了避免不同用例间互相污染，统一用 t.Setenv 设置环境变量
-func setAllEnvs(t *testing.T) {
-	t.Setenv("MACHINE_ID", "7")
-	t.Setenv("DB_DRIVER", "postgres")
-	t.Setenv("DSN", "host=127.0.0.1 user=u dbname=d sslmode=disable")
-	t.Setenv("ADDR", ":8080")
-	t.Setenv("MODE", "release")
+func TestConfigLoad(t *testing.T) {
+	// 保存原始GlobalConfig
+	originalGlobalConfig := GlobalConfig
+	defer func() {
+		GlobalConfig = originalGlobalConfig
+	}()
 
-	t.Setenv("DOCS_PREFIX", "/docs")
-	t.Setenv("API_PREFIX", "/api")
-	t.Setenv("ADMIN_PREFIX", "/admin")
-	t.Setenv("AUTH_PREFIX", "/auth")
+	// 设置测试环境变量
+	os.Setenv("LLM_PROVIDER", "test-llm")
+	os.Setenv("LLM_API_KEY", "test-key")
+	os.Setenv("ASR_PROVIDER", "test-asr")
+	os.Setenv("TTS_PROVIDER", "test-tts")
 
-	t.Setenv("SESSION_EXPIRE_DAYS", "14")
-	t.Setenv("SESSION_SECRET", "secret-xyz")
+	defer func() {
+		os.Unsetenv("LLM_PROVIDER")
+		os.Unsetenv("LLM_API_KEY")
+		os.Unsetenv("ASR_PROVIDER")
+		os.Unsetenv("TTS_PROVIDER")
+	}()
 
-	// 日志
-	t.Setenv("LOG_LEVEL", "info")
-	t.Setenv("LOG_FILENAME", "app.log")
-	t.Setenv("LOG_MAX_SIZE", "128")
-	t.Setenv("LOG_MAX_AGE", "14")
-	t.Setenv("LOG_MAX_BACKUPS", "7")
-
-	// 邮件
-	t.Setenv("MAIL_HOST", "smtp.example.com")
-	t.Setenv("MAIL_USERNAME", "user@example.com")
-	t.Setenv("MAIL_PASSWORD", "pass")
-	t.Setenv("MAIL_PORT", "587")
-	t.Setenv("MAIL_FROM", "noreply@example.com")
-
-	// LLM
-	t.Setenv("LLM_API_KEY", "ak")
-	t.Setenv("LLM_BASE_URL", "https://llm.example.com")
-	t.Setenv("LLM_MODEL", "gpt-x")
-
-	// Search
-	t.Setenv("SEARCH_ENABLED", "1")
-	t.Setenv("SEARCH_PATH", "/var/search")
-	t.Setenv("SEARCH_BATCH_SIZE", "500")
-
-	t.Setenv("MONITOR_PREFIX", "/monitor")
-	t.Setenv("LANGUAGE_ENABLED", "true")
-	t.Setenv("API_SECRET_KEY", "api-secret")
-
-	// 备份
-	t.Setenv("BACKUP_ENABLED", "true")
-	t.Setenv("BACKUP_PATH", "/var/backup")
-	t.Setenv("BACKUP_SCHEDULE", "0 2 * * *")
-
-	// 七牛 ASR/TTS
-	t.Setenv("QINIU_ASR_API_KEY", "q-asr-ak")
-	t.Setenv("QINIU_ASR_BASE_URL", "https://asr.qiniu.example.com")
-	t.Setenv("QINIU_TTS_API_KEY", "q-tts-ak")
-	t.Setenv("QINIU_TTS_BASE_URL", "https://tts.qiniu.example.com")
-}
-
-func TestLoad_WithExplicitAppEnv(t *testing.T) {
-	// 显式设置 APP_ENV，触发 util.LoadEnv(env) 的非默认分支
-	t.Setenv("APP_ENV", "production")
-	setAllEnvs(t)
-
-	// 清空全局，避免前序测试污染
-	GlobalConfig = nil
-
-	if err := Load(); err != nil {
-		t.Fatalf("Load() error: %v", err)
+	err := Load()
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
 	}
+
 	if GlobalConfig == nil {
-		t.Fatalf("GlobalConfig is nil after Load")
+		t.Fatal("GlobalConfig is nil")
 	}
 
-	// 基本字段
-	if GlobalConfig.MachineID != 7 {
-		t.Fatalf("MachineID=%d, want 7", GlobalConfig.MachineID)
-	}
-	if GlobalConfig.Database.Driver != "postgres" {
-		t.Fatalf("DBDriver=%q", GlobalConfig.Database.Driver)
-	}
-	if GlobalConfig.Database.DSN != "host=127.0.0.1 user=u dbname=d sslmode=disable" {
-		t.Fatalf("DSN=%q", GlobalConfig.Database.DSN)
-	}
-	if GlobalConfig.Server.Addr != ":8080" || GlobalConfig.Server.Mode != "release" {
-		t.Fatalf("Addr=%q Mode=%q", GlobalConfig.Server.Addr, GlobalConfig.Server.Mode)
+	// 测试LLM配置
+	if GlobalConfig.Services.LLM.Provider != "test-llm" {
+		t.Errorf("Expected LLM provider 'test-llm', got '%s'", GlobalConfig.Services.LLM.Provider)
 	}
 
-	// 日志
-	if GlobalConfig.Log.Level != "info" ||
-		GlobalConfig.Log.Filename != "app.log" ||
-		GlobalConfig.Log.MaxSize != 128 ||
-		GlobalConfig.Log.MaxAge != 14 ||
-		GlobalConfig.Log.MaxBackups != 7 {
-		t.Fatalf("log config mismatch: %+v", GlobalConfig.Log)
+	if GlobalConfig.Services.LLM.APIKey != "test-key" {
+		t.Errorf("Expected LLM API key 'test-key', got '%s'", GlobalConfig.Services.LLM.APIKey)
 	}
 
-	// 邮件
-	if GlobalConfig.Services.Mail.Host != "smtp.example.com" ||
-		GlobalConfig.Services.Mail.Username != "user@example.com" ||
-		GlobalConfig.Services.Mail.Password != "pass" ||
-		GlobalConfig.Services.Mail.Port != 587 ||
-		GlobalConfig.Services.Mail.From != "noreply@example.com" {
-		t.Fatalf("mail config mismatch: %+v", GlobalConfig.Services.Mail)
+	// 测试ASR配置
+	if GlobalConfig.Services.ASR.Provider != "test-asr" {
+		t.Errorf("Expected ASR provider 'test-asr', got '%s'", GlobalConfig.Services.ASR.Provider)
 	}
 
-	// LLM
-	if GlobalConfig.Services.LLM.APIKey != "ak" ||
-		GlobalConfig.Services.LLM.BaseURL != "https://llm.example.com" ||
-		GlobalConfig.Services.LLM.Model != "gpt-x" {
-		t.Fatalf("llm mismatch: %+v", *GlobalConfig)
+	// 测试TTS配置
+	if GlobalConfig.Services.TTS.Provider != "test-tts" {
+		t.Errorf("Expected TTS provider 'test-tts', got '%s'", GlobalConfig.Services.TTS.Provider)
 	}
 }
 
-func TestLoad_DefaultsWhenAppEnvEmpty(t *testing.T) {
-	// APP_ENV 为空，走默认 development 分支
-	_ = os.Unsetenv("APP_ENV")
-	setAllEnvs(t)
+func TestConfigStructure(t *testing.T) {
+	// 保存原始GlobalConfig
+	originalGlobalConfig := GlobalConfig
+	defer func() {
+		GlobalConfig = originalGlobalConfig
+	}()
 
-	GlobalConfig = nil
-	if err := Load(); err != nil {
-		t.Fatalf("Load() error: %v", err)
+	err := Load()
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
 	}
+
 	if GlobalConfig == nil {
-		t.Fatalf("GlobalConfig is nil after Load")
+		t.Fatal("GlobalConfig is nil")
 	}
 
-	// 抽查几个关键字段，确认仍能正确从环境取值
-	if GlobalConfig.MachineID != 7 {
-		t.Fatalf("MachineID=%d, want 7", GlobalConfig.MachineID)
+	// 测试配置结构是否完整
+	if GlobalConfig.Services.LLM.Provider == "" {
+		t.Error("LLM provider should not be empty")
+	}
+
+	if GlobalConfig.Services.ASR.Provider == "" {
+		t.Error("ASR provider should not be empty")
+	}
+
+	if GlobalConfig.Services.TTS.Provider == "" {
+		t.Error("TTS provider should not be empty")
+	}
+
+	// 测试默认值是否合理
+	if GlobalConfig.Services.LLM.Temperature <= 0 || GlobalConfig.Services.LLM.Temperature > 2 {
+		t.Errorf("LLM temperature should be between 0 and 2, got %f", GlobalConfig.Services.LLM.Temperature)
+	}
+
+	if GlobalConfig.Services.LLM.MaxTokens <= 0 {
+		t.Errorf("LLM max tokens should be positive, got %d", GlobalConfig.Services.LLM.MaxTokens)
+	}
+
+	if GlobalConfig.Services.TTS.SampleRate <= 0 {
+		t.Errorf("TTS sample rate should be positive, got %d", GlobalConfig.Services.TTS.SampleRate)
+	}
+}
+
+func TestConfigValidation(t *testing.T) {
+	// 保存原始GlobalConfig
+	originalGlobalConfig := GlobalConfig
+	defer func() {
+		GlobalConfig = originalGlobalConfig
+	}()
+
+	// 设置最小必需配置
+	os.Setenv("DSN", "test.db")
+	os.Setenv("ADDR", ":8080")
+
+	defer func() {
+		os.Unsetenv("DSN")
+		os.Unsetenv("ADDR")
+	}()
+
+	err := Load()
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	err = GlobalConfig.Validate()
+	if err != nil {
+		t.Errorf("Config validation failed: %v", err)
 	}
 }

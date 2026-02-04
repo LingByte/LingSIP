@@ -25,6 +25,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/pion/rtp v1.8.3
 	github.com/pion/sdp/v3 v3.0.17
+	github.com/sashabaranov/go-openai v1.41.2
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cast v1.10.0
 	github.com/stretchr/testify v1.11.1
